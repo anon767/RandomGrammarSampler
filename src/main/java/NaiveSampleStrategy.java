@@ -40,7 +40,7 @@ public class NaiveSampleStrategy implements Visitor<String> {
 
     @Override
     public String visitKleeneRule(KleeneRule kleene) {
-        int randomDecision = rand.nextInt(2);
+        int randomDecision = rand.nextInt(4);
         String r = kleene.rule.accept(this);
         if (randomDecision == 1) {
             r += kleene.accept(this);
@@ -84,7 +84,7 @@ public class NaiveSampleStrategy implements Visitor<String> {
             if (substring.startsWith(".?")) {
                 r.append(new OptionalRule(getRandomLexerRule()).accept(this));
                 i += 1;
-            } else if (substring.startsWith(".*")) {
+            } else if (substring.startsWith(".*") || substring.startsWith(".+")) {
                 r.append(new KleeneRule(getRandomLexerRule()).accept(this));
                 i += 1;
             } else if (substring.startsWith(".")) {
@@ -114,7 +114,10 @@ public class NaiveSampleStrategy implements Visitor<String> {
     public String visitLexerRef(LexerRef lexerRef) {
         StringBuilder r = new StringBuilder();
         for (IRule rule : ctx.getOrDefault(lexerRef.getName(), Collections.emptyList())) {
-            r.append(rule.accept(this));
+            try {
+                r.append(rule.accept(this));
+            } catch (StackOverflowError ignored) {
+            }
         }
         return r.toString();
     }
