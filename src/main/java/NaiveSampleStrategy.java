@@ -82,28 +82,22 @@ public class NaiveSampleStrategy implements Visitor<String> {
         StringBuilder r = new StringBuilder();
         for (int i = 0; i < substring.length(); i++) {
             if (substring.startsWith(".?")) {
-                if (rand.nextInt(2) == 1) {
-                    getRandomLexerRule(r);
-                }
+                r.append(new OptionalRule(getRandomLexerRule()).accept(this));
                 i += 1;
             } else if (substring.startsWith(".*")) {
-                int dec = rand.nextInt(3);
-                if (dec == 1) {
-                    i -= 1;
-                } else if (dec == 2) {
-                    getRandomLexerRule(r);
-                }
+                r.append(new KleeneRule(getRandomLexerRule()).accept(this));
+                i += 1;
             } else if (substring.startsWith(".")) {
-                getRandomLexerRule(r);
+                r.append(getRandomLexerRule().accept(this));
             }
 
         }
         return r.toString();
     }
 
-    private void getRandomLexerRule(StringBuilder r) {
+    private IRule getRandomLexerRule() {
         String random = (String) this.lexerCtx.keySet().toArray()[rand.nextInt(this.lexerCtx.keySet().size())];
-        r.append(new LexerRef(random).accept(this));
+        return new LexerRef(random);
     }
 
     @Override
