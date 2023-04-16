@@ -1,4 +1,5 @@
 import TreeGeneration.*;
+import com.mifmif.common.regex.Generex;
 
 import java.util.*;
 
@@ -40,7 +41,7 @@ public class NaiveSampleStrategy implements Visitor<String> {
 
     @Override
     public String visitKleeneRule(KleeneRule kleene) {
-        int randomDecision = rand.nextInt(4);
+        int randomDecision = rand.nextInt(2);
         String r = kleene.rule.accept(this);
         if (randomDecision == 1) {
             r += kleene.accept(this);
@@ -51,53 +52,53 @@ public class NaiveSampleStrategy implements Visitor<String> {
 
     @Override
     public String visitLexerRule(LexerRule lexerRule) {
-        StringBuilder r = new StringBuilder();
         boolean escaped = false;
         String label = lexerRule.getName();
         for (int i = 0; i < label.length(); i++) {
-            if (label.charAt(i) == '\'') {
-                escaped = !escaped;
-            } else if (escaped || label.charAt(i) == ' ') {
-                r.append(label.charAt(i));
-            } else {
-                String tmp = label.substring(i);
-                int next = tmp.indexOf('\'');
-
-                if (next > -1) {
-                    r.append(parseAntlrRegex(tmp.substring(0, next)));
-                    i += next - 1;
-                } else {
-                    r.append(parseAntlrRegex(tmp));
-                    break;
-                }
-            }
-        }
-        return r.toString();
-    }
-
-    private String parseAntlrRegex(String substring) {
-        if (lexerCtx.containsKey(substring)) {
-            return new LexerRef(substring).accept(this);
-        }
-        StringBuilder r = new StringBuilder();
-        for (int i = 0; i < substring.length(); i++) {
-            if (substring.startsWith(".?")) {
-                r.append(new OptionalRule(getRandomLexerRule()).accept(this));
-                i += 1;
-            } else if (substring.startsWith(".*") || substring.startsWith(".+")) {
-                r.append(new KleeneRule(getRandomLexerRule()).accept(this));
-                i += 1;
-            } else if (substring.startsWith(".")) {
-                r.append(getRandomLexerRule().accept(this));
+            if (!escaped && label.charAt(i) == '\'') {
+                label = label.substring(0, i) + "(" + label.substring(i + 1);
+                escaped = true;
+            } else if (escaped && label.charAt(i) == '\'') {
+                label = label.substring(0, i) + ")" + label.substring(i + 1);
+                escaped = false;
+            } else if (escaped && label.charAt(i) == '?') {
+                label = label.substring(0, i) + "\\?" + label.substring(i + 1);
+            } else if (escaped && label.charAt(i) == '[') {
+                label = label.substring(0, i) + "\\[" + label.substring(i + 1);
+            }  else if (escaped && label.charAt(i) == ']') {
+                label = label.substring(0, i) + "\\]" + label.substring(i + 1);
+            }  else if (!escaped && label.charAt(i) == '.') {
+                String extended = "(" + getRandomLexerRule() + ")";
+                if (extended.equals("( )"))
+                    extended = "' '";
+                label = label.substring(0, i) + extended + label.substring(i + 1);
+            } else if (!escaped && label.startsWith("??", i)) {
+                label = label.substring(0, i) + "?" + label.substring(i + 2);
+            } else if (!escaped && label.startsWith("+?", i)) {
+                label = label.substring(0, i) + "+" + label.substring(i + 2);
+            } else if (!escaped && label.startsWith("*?", i)) {
+                label = label.substring(0, i) + "*" + label.substring(i + 2);
             }
 
         }
-        return r.toString();
+        for (String k : this.lexerCtx.keySet()) {
+            if (label.contains(k)) {
+                StringBuilder tmp = new StringBuilder();
+                for (IRule rule : this.lexerCtx.get(k))
+                    tmp.append(rule.accept(this));
+                label = label.replace(k, tmp);
+            }
+        }
+        label = label.replace("\"", "\\\"").replace("<", "\\<").replace(">", "\\>").replace("#", "\\#");
+        Generex generex = new Generex(label);
+        String r = generex.random();
+        return r;
     }
 
-    private IRule getRandomLexerRule() {
+
+    private String getRandomLexerRule() {
         String random = (String) this.lexerCtx.keySet().toArray()[rand.nextInt(this.lexerCtx.keySet().size())];
-        return new LexerRef(random);
+        return new LexerRule(random).accept(this);
     }
 
     @Override
@@ -113,6 +114,7 @@ public class NaiveSampleStrategy implements Visitor<String> {
     @Override
     public String visitLexerRef(LexerRef lexerRef) {
         StringBuilder r = new StringBuilder();
+
         for (IRule rule : ctx.getOrDefault(lexerRef.getName(), Collections.emptyList())) {
             try {
                 r.append(rule.accept(this));

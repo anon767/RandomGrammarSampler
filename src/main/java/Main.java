@@ -14,9 +14,11 @@ public class Main {
             HashMap<String, List<IRule>> parserctx = parseParseFile();
             HashMap<String, List<IRule>> lexerctx = parseLexerFile();
             NaiveSampleStrategy naiveSampleStrategy = new NaiveSampleStrategy(parserctx, lexerctx);
-            String r = new Rule("htmlDocument").accept(naiveSampleStrategy);
-            //System.out.println(parserctx);
-            System.out.println(r);
+            for (int i = 0; i < 1; i++) {
+                String r = new Rule("htmlDocument").accept(naiveSampleStrategy);
+                //System.out.println(parserctx);
+                System.out.println(r);
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
